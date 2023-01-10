@@ -6,15 +6,20 @@ import tickers from '../public/BSE_metadata'
 import Loader from 'react-loader-spinner'
 import { useEffect, useRef, useState } from 'react'
 import axios from 'axios'
-import { Scatter } from 'react-chartjs-2'
+import { Scatter, Line } from 'react-chartjs-2'
 import NavBar from '../public/appbar'
 import Top from '../public/ScrollTop'
+import { Chart, TimeScale,LineController, LineElement, PointElement, LinearScale, Title, Tooltip, Legend } from 'chart.js'
+import 'chartjs-adapter-date-fns';
+import dynamic from 'next/dynamic'
 
 export default function Home() {
   const scatter = useRef()
   const [bg,setBg] = useState('linear-gradient:(white)')
   const [loading,setLoading] = useState(false)
   const [compF,setCompF] = useState(false)
+  const [maxY1,setMaxY1] = useState()
+  const [maxY2,setMaxY2] = useState()
   const [stock1,setStock1] = useState(tickers[0])
   const [stock2,setStock2] = useState(tickers[1])
   const [close1,setClose1] = useState([{x:0,y:0},{x:0,y:0}])
@@ -27,14 +32,21 @@ export default function Home() {
     width: undefined,
     height: undefined,
   });
+  // const zoomPlugin = dynamic(() => import('chartjs-plugin-zoom').then((mod) => mod.zoomPlugin), {
+  //   ssr: false,
+  // })
   useEffect(() => {
     if (typeof window !== "undefined") {
-      import('chartjs-plugin-zoom')
       import('hammerjs');
+      import('chartjs-plugin-zoom').then((module) => {
+        setTimeout(() => Chart.register(module.default,TimeScale,LineController, LineElement, PointElement, LinearScale, Title, Tooltip, Legend ),5000) 
+      })
       setWindowSize({
         width: window.innerWidth,
         height: window.innerHeight
       })
+    }else{
+      console.log("Ehhh! window aint defined!")
     }
   },[])
   var getDateArray = (start, end) => {
@@ -50,54 +62,57 @@ export default function Home() {
   }
   const [corr,setCorr] = useState()
   const [value, setValue] = useState('180');
+  
   const options = {
     legend: {
       labels: {
           fontColor: 'black'
       }
     },
-    tooltips: {
-      enabled: true,
-      callbacks: {
-        label: function(tooltipItem, data) {
-          var label = data.datasets[tooltipItem.datasetIndex].label
-          console.log(tooltipItem)
-          return label+"\n| Date: "+tooltipItem.xLabel+"\nPrice: "+tooltipItem.yLabel;
-        },
-        labelColor: function(tooltipItem, chart) {
-          return {
-              borderColor: 'black',
-              backgroundColor: tooltipItem.datasetIndex===0?close1[close1.length-1]['y']>close1[close1.length-2]['y']?'green':'red':close2[close2.length-1]['y']>close2[close2.length-2]['y']?'blue':'pink'
-          };
-        },
-      },
-      custom: function(tooltipModel){
-        var model = tooltipModel
-        model.backgroundColor = 'rgba(0,0,0,0.8)'
-        return model
-      }
-    },
     responsive: true,
     plugins: {
+      tooltip: {
+        enabled: true,
+        callbacks: {
+          label: function(context) {
+            var label = context.dataset.label || '';
+            return label+"\n| Date: "+new Date(context.parsed.x).toLocaleDateString('en-US')+"\nPrice: "+context.parsed.y;
+          },
+          labelColor: function(tooltipItem, chart) {
+            return {
+                borderColor: 'black',
+                backgroundColor: tooltipItem.datasetIndex===0?close1[close1.length-1]['y']>close1[close1.length-2]['y']?'green':'red':close2[close2.length-1]['y']>close2[close2.length-2]['y']?'blue':'pink'
+            };
+          },
+          title: function(context) {
+            return "";
+          },
+        },
+      },
       zoom: {
         zoom: {
-          enabled: true,
-          drag: true,
-          mode: 'x',
-          rangeMax: {
-            // Format of max pan range depends on scale type
-            x: new Date()
+          drag: {
+            enabled: true,
+            borderWidth: 1
           },
+          pinch: {
+            enabled: true
+          },
+          mode: 'x',
         },
         pan: {
           enabled: false,
-          mode: 'x'
+          mode: 'x',
+        },
+        limits: {
+          x: {min: close1[0]['x'],max: new Date()},
+          y: {min: 0,max: maxY1},
+          y1: {min: 0,max: maxY2}
         }
       }
     },
     scales: {
-      yAxes: [{
-        id: 'A',
+      y: {
         type: 'linear',
         linear:{
           stepSize:'1'
@@ -106,25 +121,18 @@ export default function Home() {
           fontColor: 'black'
         },
         position: 'left',
-        scaleLabel: {
-          display: true,
-          labelString: dupStock1+" Prices",
-          fontColor: 'black'
-        },
-      }, {
-        id: 'B',
+      },
+      y2: {
         type: 'linear',
         position: 'right',
         ticks:{
           fontColor: 'black'
         },
-        scaleLabel: {
-          display: true,
-          labelString: dupStock2+" Prices",
-          fontColor: 'black'
+        grid: {
+          drawOnChartArea: false // only want the grid lines for one axis to show up
         }
-      }],
-      xAxes: [{
+      },
+      x: {
         display: true,
         type: 'time',
         time: { 
@@ -141,7 +149,7 @@ export default function Home() {
           labelString: 'Date',
           fontColor: 'black'
         },
-      }]
+      }
     }
   }
   const data = {
@@ -165,7 +173,7 @@ export default function Home() {
       pointHoverBorderWidth: 2,
       pointRadius: 1,
       pointHitRadius: 10,
-      yAxisID: 'A',
+      yAxisID: 'y',
       data: close1
     }, {
       label: dupStock2,
@@ -186,7 +194,7 @@ export default function Home() {
       pointHoverBorderWidth: 2,
       pointRadius: 1,
       pointHitRadius: 10,
-      yAxisID: 'B',
+      yAxisID: 'y2',
       data: close2
     }]
   }
@@ -213,6 +221,7 @@ export default function Home() {
     return (minLength * sumXY - sumX * sumY) / Math.sqrt((minLength * sumX2 - sumX * sumX) * (minLength * sumY2 - sumY * sumY));
   };
   const compare = (code1,code2,days) => {
+
     console.log(code1+" "+code2+" "+days)
     let ed1 = ""
     let ed2 = ""
@@ -251,6 +260,8 @@ export default function Home() {
             console.log(close2)
           }
         ).then(res => {
+          setMaxY1(Math.max(y1))
+          setMaxY2(Math.max(y2))
           return pcorr1(y1,y2);
         }).then(res => {
           setCorr(res);Math.abs(res)<=0.5?setBg('linear-gradient(#E55E5F,#E5585C,#B83024)'):Math.abs(res)<=0.8?setBg('linear-gradient(#F1B65C,#EEA05F,#E98163)'):setBg('linear-gradient(#78BB78,#5DAC5B,#559E3C)');
@@ -267,8 +278,14 @@ export default function Home() {
             setDupStock1(stock1.name)
             setDupStock2(stock2.name)
           }
-        ).then(res => setLoading(false)).then(res => {
-          document.getElementById('resultText').scrollIntoView(true)
+        ).then(res => 
+          { 
+            setLoading(false)
+          }
+        ).then(res => {
+          setTimeout(() => {
+            document.getElementById('resultText').scrollIntoView({behavior:'smooth'});
+          },50)
         }).then(res =>
           console.log(close1[close1.length-1]['y'])  
         )
@@ -279,16 +296,17 @@ export default function Home() {
     animationDuration: 1000
   }
   const pan = () => {
-    var chart = scatter.current.chartInstance
-    var zoomOptions = chart.options.plugins.zoom.zoom
-    var panOptions = chart.options.plugins.zoom.pan
-    panOptions.enabled = panOptions.enabled ? false : true
-    zoomOptions.enabled = zoomOptions.enabled ? false : true;
-    chart.update();
+    var chart = scatter.current.config._config.options.plugins.zoom
+    var zoomOptions = chart.zoom
+    var panOptions = chart.pan
+    panOptions.enabled = !panOptions.enabled
+    zoomOptions.drag.enabled = !zoomOptions.drag.enabled
+    zoomOptions.pinch.enabled = !zoomOptions.pinch.enabled
+    scatter.current.update();
     document.getElementById('pan').style.backgroundColor==='black'?document.getElementById('pan').style.backgroundColor='rgba(0,0,0,0)':document.getElementById('pan').style.backgroundColor='black'
     document.getElementById('pan').style.backgroundColor==='black'?document.getElementById('pan').style.color='white':document.getElementById('pan').style.color='black'
-    console.log(scatter.current.chartInstance.options.plugins.zoom.zoom)
-    console.log(scatter.current.chartInstance.options.plugins.zoom.pan)
+    console.log("Drag: "+zoomOptions.drag.enabled+", Pinch:"+zoomOptions.pinch.enabled)
+    console.log("Pan: "+panOptions.enabled)
   }
   return (
     <div>
@@ -372,12 +390,12 @@ export default function Home() {
             {
               loading?
               <div style={{display:'flex',flexDirection:'column',justifyContent:'center',alignContent:'center'}}>
-                <Loader
+                {/* <Loader
                   type="Audio" 
                   color="#00BFFF" 
                   height={80} 
                   width={80} 
-                />
+                /> */}
               </div>
               :
               <div style={{display:'flex',flexDirection:'column',justifyContent:'center',alignContent:'center',width:'85vw'}}>
@@ -385,10 +403,10 @@ export default function Home() {
                 <h1 style={{textAlign:'center'}}>{Math.abs(corr)<=0.5?'😭':Math.abs(corr)<=0.8?'🧐':'🥳'}</h1>
                 <h4 style={{textAlign:'center'}}>{Math.abs(corr)<=0.5?'Sorry, not similar':Math.abs(corr)<=0.8?'Little similar':'Very similar to each other'}</h4>
                 <div style={{position:'relative',height:'50px'}}>
-                  <ToggleButton style={{position:'absolute',left:'10px',width:'75px',height:'50px',color:'black',borderColor:'black'}} onClick={(e) => {console.log(scatter.current);scatter.current.chartInstance.resetZoom()}}>Zoom out</ToggleButton>
-                  <ToggleButton id="pan" onChange={() => {pan()}} style={{position:'absolute',right:'10px',width:'75px',height:'50px',color:'black',borderColor:'black',backgroundColor:'rgba(0,0,0,0)'}}>Allow Panning</ToggleButton>
+                  <ToggleButton value={0} style={{position:'absolute',left:'10px',width:'75px',height:'50px',color:'black',borderColor:'black'}} onClick={(e) => {console.log(scatter.current);scatter.current.resetZoom()}}>Zoom out</ToggleButton>
+                  <ToggleButton value={0} id="pan" onChange={() => {pan()}} style={{position:'absolute',right:'10px',width:'75px',height:'50px',color:'black',borderColor:'black',backgroundColor:'rgba(0,0,0,0)'}}>Allow Panning</ToggleButton>
                 </div>
-                <Scatter options={options} data={data} width='90%' height='65%' ref={scatter}/>
+                <Line options={options} data={data} width='90%' height='60%' ref={scatter}/>
               </div>
             }
             </div>:
