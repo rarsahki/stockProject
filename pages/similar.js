@@ -3,7 +3,6 @@ import { Autocomplete, ToggleButton } from '@material-ui/lab'
 import Head from 'next/head'
 import styles from '../styles/Home.module.css'
 import tickers from '../public/BSE_metadata'
-import Loader from 'react-loader-spinner'
 import { createRef, useEffect, useRef, useState } from 'react'
 import axios from 'axios'
 import { Scatter } from 'react-chartjs-2'
@@ -433,13 +432,13 @@ export default function Home(props) {
               {
                 loading?
                 <div style={{display:'flex',flexDirection:'column',justifyContent:'center',alignContent:'center'}}>
-                  <Loader
+                  {/* <Loader
                     type="Audio" 
                     color="#00BFFF" 
                     height={80} 
                     width={80}
                     style={{marginTop:'2rem'}} 
-                  />
+                  /> */}
                 </div>
                 :
                 <div id='graphs' style={{display:'flex',flexDirection:'column',justifyContent:'center',alignContent:'center'}}>
