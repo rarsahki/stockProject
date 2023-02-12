@@ -42,7 +42,6 @@ function NavBar(props){
                     <div className={styles.buttons}>
                         <Button color="inherit" onClick={() => router.push('/')}>Compare</Button>
                         <Button color="inherit" onClick={() => router.push('/similar')}>Similar</Button>
-                        {/* <Button color="inherit" onClick={() => router.push('/similar')}>Blog</Button> */}
                     </div>
                     <IconButton edge="end" className={classes.menuButton} color="inherit" aria-label="menu"  aria-controls="fade-menu" aria-haspopup="true" onClick={handleClick}>
                         <MenuIcon />

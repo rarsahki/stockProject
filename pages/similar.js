@@ -6,14 +6,13 @@ import tickers from '../public/BSE_metadata'
 import { useEffect, useRef, useState, useMemo } from 'react'
 import axios from 'axios'
 import { Line } from 'react-chartjs-2'
-import CloseIcon from '@material-ui/icons/Close'
 import React from 'react'
+import CloseIcon from '@material-ui/icons/Close'
 import NavBar from '../public/appbar';
 import Top from '../public/ScrollTop'
 import { Chart, TimeScale,LineController, LineElement, PointElement, LinearScale, Title, Tooltip, Legend } from 'chart.js'
 import 'chartjs-adapter-date-fns';
 import LoadingComp from '../public/loading'
-import { isZoomedOrPanned } from 'chartjs-plugin-zoom'
 
 const useStyles = makeStyles((theme) => ({
   appBar: {
@@ -343,6 +342,7 @@ export default function Home(props) {
         <link rel="icon" href="/icons/icon-192x192.png" />
         <link rel="apple-touch-icon" href="/icons/icon-192x192.png"></link>
         <meta name="theme-color" content="#317EFB"/>
+        <title>Similar Stocks</title>
       </Head>
       <Dialog fullScreen open={open} onClose={handleClose} TransitionComponent={Transition}>
         <AppBar className={classes.appBar}>
