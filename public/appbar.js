@@ -37,13 +37,12 @@ function NavBar(props){
             <AppBar position="relative">
                 <Toolbar>
                     <Typography variant="h6" className={classes.title}>
-                        STOCKCOMPARE.IN
+                        Welcome
                     </Typography>
                     <div className={styles.buttons}>
-                        <Button color="inherit" onClick={() => router.push('/App')}>Home</Button>
                         <Button color="inherit" onClick={() => router.push('/')}>Compare</Button>
                         <Button color="inherit" onClick={() => router.push('/similar')}>Similar</Button>
-                        <Button color="inherit" onClick={() => router.push('/similar')}>Blog</Button>
+                        {/* <Button color="inherit" onClick={() => router.push('/similar')}>Blog</Button> */}
                     </div>
                     <IconButton edge="end" className={classes.menuButton} color="inherit" aria-label="menu"  aria-controls="fade-menu" aria-haspopup="true" onClick={handleClick}>
                         <MenuIcon />
@@ -58,8 +57,7 @@ function NavBar(props){
                     >
                         <MenuItem onClick={() => router.push('/App')}>Home</MenuItem>
                         <MenuItem onClick={() => router.push('/')}>Compare</MenuItem>
-                        <MenuItem onClick={() => router.push('/similar')}>Similar</MenuItem>
-                        <MenuItem onClick={() => router.push('/similar')}>Blog</MenuItem>
+                        {/* <MenuItem onClick={() => router.push('/similar')}>Blog</MenuItem> */}
                     </Menu>
                 </Toolbar>
             </AppBar>

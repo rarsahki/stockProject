@@ -5,17 +5,17 @@ import styles from '../styles/Home.module.css'
 import tickers from '../public/BSE_metadata'
 import { useEffect, useRef, useState } from 'react'
 import axios from 'axios'
-import { Scatter, Line } from 'react-chartjs-2'
+import { Line } from 'react-chartjs-2'
 import NavBar from '../public/appbar'
 import Top from '../public/ScrollTop'
 import { Chart, TimeScale,LineController, LineElement, PointElement, LinearScale, Title, Tooltip, Legend } from 'chart.js'
 import 'chartjs-adapter-date-fns';
-import dynamic from 'next/dynamic'
+import LoadingComp from '../public/loading'
 
 export default function Home() {
   const scatter = useRef()
   const [bg,setBg] = useState('linear-gradient:(white)')
-  const [loading,setLoading] = useState(false)
+  const [loading,setLoading] = useState(true)
   const [compF,setCompF] = useState(false)
   const [maxY1,setMaxY1] = useState()
   const [maxY2,setMaxY2] = useState()
@@ -38,7 +38,7 @@ export default function Home() {
     if (typeof window !== "undefined") {
       import('hammerjs');
       import('chartjs-plugin-zoom').then((module) => {
-        setTimeout(() => Chart.register(module.default,TimeScale,LineController, LineElement, PointElement, LinearScale, Title, Tooltip, Legend ),5000) 
+        setTimeout(() => {Chart.register(module.default,TimeScale,LineController, LineElement, PointElement, LinearScale, Title, Tooltip, Legend );setLoading(false)},5000) 
       })
       setWindowSize({
         width: window.innerWidth,
@@ -100,13 +100,11 @@ export default function Home() {
           mode: 'x',
         },
         pan: {
-          enabled: false,
+          enabled: true,
           mode: 'x',
         },
         limits: {
           x: {min: close1[0]['x'],max: new Date()},
-          y: {min: 0,max: maxY1},
-          y1: {min: 0,max: maxY2}
         }
       }
     },
@@ -255,8 +253,8 @@ export default function Home() {
             //let a2 = res.map((e,index) => e = {x:d2[index],y:e});
             setClose1(result)
             setClose2(res)
-            console.log(close1)
-            console.log(close2)
+            console.log(result)
+            console.log(res)
           }
         ).then(res => {
           setMaxY1(Math.max(y1))
@@ -285,8 +283,9 @@ export default function Home() {
           setTimeout(() => {
             document.getElementById('resultText').scrollIntoView({behavior:'smooth'});
           },50)
-        }).then(res =>
-          console.log(close1[close1.length-1]['y'])  
+        }).then(res =>  {
+            console.log(close1[close1.length-1]['y'])
+          }  
         )
       }
     )
@@ -298,17 +297,33 @@ export default function Home() {
     var chart = scatter.current.config._config.options.plugins.zoom
     var zoomOptions = chart.zoom
     var panOptions = chart.pan
-    panOptions.enabled = !panOptions.enabled
+    if(document.getElementById('pan').style.backgroundColor==='rgba(0, 0, 0, 0)' && panOptions.enabled===true){
+      panOptions.enabled = true
+    }else{
+      panOptions.enabled = !panOptions.enabled
+    }
     zoomOptions.drag.enabled = !zoomOptions.drag.enabled
     zoomOptions.pinch.enabled = !zoomOptions.pinch.enabled
-    scatter.current.update();
+    scatter.current.update('none');
     document.getElementById('pan').style.backgroundColor==='black'?document.getElementById('pan').style.backgroundColor='rgba(0,0,0,0)':document.getElementById('pan').style.backgroundColor='black'
     document.getElementById('pan').style.backgroundColor==='black'?document.getElementById('pan').style.color='white':document.getElementById('pan').style.color='black'
     console.log("Drag: "+zoomOptions.drag.enabled+", Pinch:"+zoomOptions.pinch.enabled)
     console.log("Pan: "+panOptions.enabled)
+    console.log(scatter.current)
+  }
+  const setPanInit = () => {
+    if(document.getElementById('pan').style.backgroundColor==='rgba(0, 0, 0, 0)'){
+      console.log('It works')
+      var chart = scatter.current.config._config.options.plugins.zoom
+      var panOptions = chart.pan
+      panOptions.enabled = false
+      scatter.current.update('none');
+    }
+    console.log('io')
   }
   return (
     <div>
+      {loading?<LoadingComp/>:null}
       <NavBar id='back-to-top-anchor'/>
       <Head>
         <meta charset='utf-8' />
@@ -326,7 +341,7 @@ export default function Home() {
 
       <main className={styles.main}>
         <h1 className={styles.title}>
-          Welcome to <a>Stock Comparer</a>
+          Compare <a>Two Stocks</a>
         </h1>
 
         <div className={styles.grid}>
@@ -387,16 +402,6 @@ export default function Home() {
             compF?
             <div className={styles.card} id='result' style={{backgroundImage:bg,backgroundColor:'white'}}>
             {
-              loading?
-              <div style={{display:'flex',flexDirection:'column',justifyContent:'center',alignContent:'center'}}>
-                {/* <Loader
-                  type="Audio" 
-                  color="#00BFFF" 
-                  height={80} 
-                  width={80} 
-                /> */}
-              </div>
-              :
               <div style={{display:'flex',flexDirection:'column',justifyContent:'center',alignContent:'center',width:'85vw'}}>
                 <h3 id="resultText" style={{textAlign:'center'}}>Results:</h3>
                 <h1 style={{textAlign:'center'}}>{Math.abs(corr)<=0.5?'😭':Math.abs(corr)<=0.8?'🧐':'🥳'}</h1>
@@ -405,7 +410,7 @@ export default function Home() {
                   <ToggleButton value={0} style={{position:'absolute',left:'10px',width:'75px',height:'50px',color:'black',borderColor:'black'}} onClick={(e) => {console.log(scatter.current);scatter.current.resetZoom()}}>Zoom out</ToggleButton>
                   <ToggleButton value={0} id="pan" onChange={() => {pan()}} style={{position:'absolute',right:'10px',width:'75px',height:'50px',color:'black',borderColor:'black',backgroundColor:'rgba(0,0,0,0)'}}>Allow Panning</ToggleButton>
                 </div>
-                <Line options={options} data={data} width='90%' height='60%' ref={scatter}/>
+                <Line options={options} data={data} width='90%' height='60%' ref={scatter} onClick={setPanInit}/>
               </div>
             }
             </div>:

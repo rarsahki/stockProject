@@ -3,13 +3,17 @@ import { Autocomplete, ToggleButton } from '@material-ui/lab'
 import Head from 'next/head'
 import styles from '../styles/Home.module.css'
 import tickers from '../public/BSE_metadata'
-import { createRef, useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useMemo } from 'react'
 import axios from 'axios'
-import { Scatter } from 'react-chartjs-2'
+import { Line } from 'react-chartjs-2'
 import CloseIcon from '@material-ui/icons/Close'
 import React from 'react'
 import NavBar from '../public/appbar';
 import Top from '../public/ScrollTop'
+import { Chart, TimeScale,LineController, LineElement, PointElement, LinearScale, Title, Tooltip, Legend } from 'chart.js'
+import 'chartjs-adapter-date-fns';
+import LoadingComp from '../public/loading'
+import { isZoomedOrPanned } from 'chartjs-plugin-zoom'
 
 const useStyles = makeStyles((theme) => ({
   appBar: {
@@ -27,82 +31,112 @@ const Transition = React.forwardRef(function Transition(props, ref) {
 
 export default function Home(props) {
   const scatter = useRef([])
-  const [loading,setLoading] = useState(false)
+  const [days,setDays] = useState(0)
+  const [loading,setLoading] = useState(true)
   const [compF,setCompF] = useState(false)
   const [stock1,setStock1] = useState(tickers[0])
-  const [corrD,setCorrD] = useState([])
+  const [corrD,setCorrD] = useState([{data:[{x:0,y:0}]}])
   const [width,setWidth] = useState()
   const [height,setHeight] = useState()
+  const [windowSize, setWindowSize] = useState({
+    width: undefined,
+    height: undefined,
+  });
   useEffect(() => {
     if (typeof window !== "undefined") {
-      import('chartjs-plugin-zoom')
       import('hammerjs');
-      window.addEventListener('orientationchange',function(){
-        setWidth(window.innerHeight)
-        setHeight(window.innerWidth)
+      import('chartjs-plugin-zoom').then((module) => {
+        setTimeout(() => {Chart.register(module.default,TimeScale,LineController, LineElement, PointElement, LinearScale, Title, Tooltip, Legend );setLoading(false)},5000) 
       })
-      if(window.matchMedia("(orientation:landscape)").matches){
-        setWidth(window.innerWidth)
-        setHeight(window.innerHeight)
-      }
+      setWindowSize({
+        width: window.innerWidth,
+        height: window.innerHeight
+      })
+    }else{
+      console.log("Ehhh! window aint defined!")
     }
   },[])
   const similar = (code,days) => {
     axios.post("http://localhost:8080/similar",{
       code:code,
       days:days
-    }).then(res => {return res.data.codes}).then(res => setCorrD(res)).then(scatter.current =  Array(21).fill().map((ref, index) =>   scatter.current[index] = createRef())).then(res => setLoading(false))
+    }).
+    then(res => {console.log(res.data);return res.data.codes;}).
+    then(res => setCorrD(res)).
+    then(() => {
+        document.getElementById('graphs').
+        scrollIntoView({behavior:'smooth', block: 'start'})
+    })
   }
+
   const graph = (code,d,nm,i) => {
+    console.log(days)
     //console.log(new Date())
     const options = {
+      animation: {
+        duration: 2000,
+        onComplete: function(context) {
+          if (context.initial) {
+            setPanInit(i)
+            if(i===corrD.length-3&&loading===true){
+              setLoading(false)
+              console.log('Initial animation finished');
+            }
+          } else {
+            if(i===corrD.length-3&&loading===true){
+              setLoading(false)
+              console.log('animation finished');
+            }
+          }
+        }
+      },
       legend: {
         labels: {
             fontColor: 'black'
         }
       },
-      tooltips: {
-        enabled: true,
-        callbacks: {
-          label: function(tooltipItem, data) {
-            var label = data.datasets[tooltipItem.datasetIndex].label
-            //console.log(tooltipItem)
-            return label+"\n| Date: "+tooltipItem.xLabel+"\nPrice: "+tooltipItem.yLabel;
-          },
-          labelColor: function(tooltipItem, chart) {
-            return {
-                borderColor: 'black',
-                backgroundColor: tooltipItem.datasetIndex===0?d[d.length-1]['y']>d[d.length-2]['y']?'green':'red':corrD[corrD.length-1].data[corrD[corrD.length-1].data.length-1]['y']>corrD[corrD.length-1].data[corrD[corrD.length-1].data.length-2]['y']?'blue':'pink'
-            };
-          },
-        },
-        custom: function(tooltipModel){
-          var model = tooltipModel
-          model.backgroundColor = 'rgba(0,0,0,0.8)'
-          return model
-        }
-      },
       responsive: true,
       plugins: {
-        zoom: {
-          zoom: {
-            enabled: true,
-            drag: true,
-            mode: 'x',
-            rangeMax: {
-              // Format of max pan range depends on scale type
-              x: new Date()
+        tooltip: {
+          enabled: true,
+          callbacks: {
+            label: function(context) {
+              var label = context.dataset.label || '';
+              return label+"\n| Date: "+new Date(context.parsed.x).toLocaleDateString('en-US')+"\nPrice: "+context.parsed.y;
+            },
+            labelColor: function(tooltipItem, chart) {
+              return {
+                  borderColor: 'black',
+                  backgroundColor: tooltipItem.datasetIndex===0?d[d.length-1]['y']>d[d.length-2]['y']?'green':'red':corrD[corrD.length-1].data[corrD[corrD.length-1].data.length-1]['y']>corrD[corrD.length-1].data[corrD[corrD.length-1].data.length-2]['y']?'blue':'pink'
+                };
+            },
+            title: function(context) {
+              return "";
             },
           },
+        },
+        zoom: {
+          zoom: {
+            drag: {
+              enabled: true,
+              borderWidth: 1
+            },
+            pinch: {
+              enabled: true
+            },
+            mode: 'x',
+          },
           pan: {
-            enabled: false,
-            mode: 'x'
+            enabled: true,
+            mode: 'x',
+          },
+          limits: {
+            x: {min: corrD[0].data['x'],max: new Date()},
           }
         }
       },
       scales: {
-        yAxes: [{
-          id: 'A',
+        y: {
           type: 'linear',
           linear:{
             stepSize:'1'
@@ -111,30 +145,23 @@ export default function Home(props) {
             fontColor: 'black'
           },
           position: 'left',
-          scaleLabel: {
-            display: true,
-            labelString: nm+" Prices",
-            fontColor: 'black'
-          },
-        }, {
-          id: 'B',
+        },
+        y2: {
           type: 'linear',
           position: 'right',
           ticks:{
             fontColor: 'black'
           },
-          scaleLabel: {
-            display: true,
-            labelString: corrD[corrD.length-1].name+" Prices",
-            fontColor: 'black'
+          grid: {
+            drawOnChartArea: false // only want the grid lines for one axis to show up
           }
-        }],
-        xAxes: [{
+        },
+        x: {
           display: true,
           type: 'time',
           time: { 
-            parser: 'DD/MM/YYYY',
-            unit: "day",
+            parser: 'MM/dd/yyyy',
+            unit: "month",
             stepSize: "1",
           },
           ticks: {
@@ -146,10 +173,10 @@ export default function Home(props) {
             labelString: 'Date',
             fontColor: 'black'
           },
-        }]
+        }
       }
     }
-    const plotData = {
+    const data = {
       // labels: getDateArray(startDate,endDate).reverse().slice(0,parseInt(value)).map(e => e.toLocaleDateString()).reverse(),
       datasets: [{
         label: nm,
@@ -170,7 +197,7 @@ export default function Home(props) {
         pointHoverBorderWidth: 2,
         pointRadius: 1,
         pointHitRadius: 10,
-        yAxisID: 'A',
+        yAxisID: 'y',
         data: d
       }, {
         label: corrD[corrD.length-1].name,
@@ -191,38 +218,79 @@ export default function Home(props) {
         pointHoverBorderWidth: 2,
         pointRadius: 1,
         pointHitRadius: 10,
-        yAxisID: 'B',
+        yAxisID: 'y2',
         data: corrD[corrD.length-1].data
       }]
     }
     if(code===101)
-      return <Scatter id={code} options={options} data={plotData} width={"900px"} height={"600px"} ref={scatter.current[20]}/>
-    return <Scatter id={code} options={options} data={plotData} width={"900px"} height={"600px"} ref={scatter.current[i]}/>
+      return <Line id={code} options={options} data={data} width='900px' height='600px' ref={(el) => {scatter.current[20] = el}}/>
+    return (
+      <div className={styles.card} id={i}>
+        <div style={{position:'relative',height:'50px',marginBottom:'10px'}}>
+          <ToggleButton value={0} id={'zoom'+i} style={{position:'absolute',left:'10px',width:'75px',height:'50px',color:'black',borderColor:'black'}} onClick={(e) => {console.log(scatter.current[i]);scatter.current[i].resetZoom()}}>Zoom out</ToggleButton>
+          <ToggleButton value={0} id={'pan'+i} onChange={() => {pan(i)}} style={{position:'absolute',right:'10px',width:'75px',height:'50px',color:'black',borderColor:'black',backgroundColor:'rgba(0,0,0,0)'}}>Allow Panning</ToggleButton>
+        </div>
+        <div>
+          <Line id={code} options={options} data={data} width='900px' height='600px' ref={(el) => {scatter.current[i] = el}}/>
+        </div>
+        <div style={{position:'relative',height:'50px',marginTop:'10px'}}>
+          <ToggleButton style={{position:'absolute',right:'10px',width:'75px',height:'50px',color:'black',borderColor:'black',backgroundColor:'rgba(0,0,0,0)'}} onClick={() => {bigGraph(code,d,nm,i)}}>Full Screen</ToggleButton>
+        </div>
+      </div>
+    )
   }
+
+
+  const pan = (i) => {
+    console.log(i)
+    var chart = scatter.current[i].config._config.options.plugins.zoom
+    var zoomOptions = chart.zoom
+    var panOptions = chart.pan
+    if(document.getElementById('pan'+i).style.backgroundColor==='rgba(0, 0, 0, 0)' && panOptions.enabled===true){
+      panOptions.enabled = true
+    }else{
+      panOptions.enabled = !panOptions.enabled
+    }
+    zoomOptions.drag.enabled = !zoomOptions.drag.enabled
+    zoomOptions.pinch.enabled = !zoomOptions.pinch.enabled
+    scatter.current[i].config.update('none');
+    document.getElementById('pan'+i).style.backgroundColor==='black'?document.getElementById('pan'+i).style.backgroundColor='rgba(0,0,0,0)':document.getElementById('pan'+i).style.backgroundColor='black'
+    document.getElementById('pan'+i).style.backgroundColor==='black'?document.getElementById('pan'+i).style.color='white':document.getElementById('pan'+i).style.color='black'
+    console.log("Drag: "+zoomOptions.drag.enabled+", Pinch:"+zoomOptions.pinch.enabled)
+    console.log("Pan: "+panOptions.enabled)
+    console.log(scatter.current[i].config)
+  }
+  const setPanInit = (i) => {
+    if(document.getElementById('pan'+i).style.backgroundColor==='rgba(0, 0, 0, 0)'){
+      console.log('It works')
+      var chart = scatter.current[i].config._config.options.plugins.zoom
+      var panOptions = chart.pan
+      panOptions.enabled = false
+      console.log(chart)
+      scatter.current[i].config.update('none');
+    }
+    console.log(i)
+  }
+  const changeDetector = (corrD) => {
+    let arr = []
+    if(corrD!==undefined){
+      if(corrD[0]!==undefined)
+        corrD.slice(0,corrD.length-2).map((e,index) => {
+          arr.push(graph(e.code,e.data,e.name,index));
+        }
+      )
+      return arr;
+    }
+  }
+
+  const graphs = useMemo(() => changeDetector(corrD), [corrD])
+
   const [corr,setCorr] = useState()
   const [value, setValue] = useState('180');
   const handleChange = (event) => {
     setValue(event.target.value);
   };
   
-  var dragOptions = {
-    animationDuration: 1000
-  }
-  const pan = (i) => {
-    console.log(scatter)
-    var chart = scatter.current[i].current.chartInstance
-    console.log(chart)
-    var zoomOptions = chart.options.plugins.zoom.zoom
-    var panOptions = chart.options.plugins.zoom.pan
-    panOptions.enabled = panOptions.enabled ? false : true
-    zoomOptions.enabled = zoomOptions.enabled ? false : true;
-    chart.update();
-    document.getElementById('pan'+i).style.backgroundColor==='black'?document.getElementById('pan'+i).style.backgroundColor='rgba(0,0,0,0)':document.getElementById('pan'+i).style.backgroundColor='black'
-    document.getElementById('pan'+i).style.backgroundColor==='black'?document.getElementById('pan'+i).style.color='white':document.getElementById('pan'+i).style.color='black'
-    console.log(chart.options.plugins.zoom.zoom)
-    console.log(chart.options.plugins.zoom.pan)
-  }
-
   const classes = useStyles();
   const [open, setOpen] = useState(false);
   const [graphProp,setGraphProp] = useState([])
@@ -239,12 +307,20 @@ export default function Home(props) {
     setGraphProp([code,d,nm,i])
   }
 
-  const reset = () => {
+  const reset = (code,value) => {
+    console.log(code+" "+value)
+    console.log("check "+scatter.current[0])
     if(document.getElementById('graphs')!==null){
       for(let i=0;i<corrD.length-2;i++){
-        scatter.current[i].current.chartInstance.resetZoom()
+        scatter.current[i].resetZoom()
+        setPanInit(i)
         document.getElementById('pan'+i).style.backgroundColor === 'black'?pan(i):null
+        if(i===corrD.length-3){
+            similar(code,value)
+        }
       }
+    }else{
+      similar(code,value)
     }
   }
 
@@ -254,6 +330,7 @@ export default function Home(props) {
 
   return (
     <div>
+      {loading?<LoadingComp/>:null}
       <NavBar id='back-to-top-anchor'/>
       <Dialog fullScreen open={open} onClose={handleClose} TransitionComponent={Transition}>
         <AppBar className={classes.appBar}>
@@ -270,8 +347,8 @@ export default function Home(props) {
           open?
             <div className={styles.card} id={graphProp[3]}>
               <div style={{position:'relative',height:'50px',marginBottom:'10px'}}>
-                <ToggleButton style={{position:'absolute',left:'10px',width:'75px',height:'50px',color:'black',borderColor:'black'}} onClick={(e) => {scatter.current[20].current.chartInstance.resetZoom()}}>Zoom out</ToggleButton>
-                <ToggleButton id={'pan'+20} onChange={() => {pan(20)}} style={{position:'absolute',right:'10px',width:'75px',height:'50px',color:'black',borderColor:'black',backgroundColor:'rgba(0,0,0,0)'}}>Allow Panning</ToggleButton>
+                <ToggleButton value={0} style={{position:'absolute',left:'10px',width:'75px',height:'50px',color:'black',borderColor:'black'}} onClick={(e) => {scatter.current[20].resetZoom()}}>Zoom out</ToggleButton>
+                <ToggleButton value={0} id={'pan'+20} onChange={() => {pan(20)}} style={{position:'absolute',right:'10px',width:'75px',height:'50px',color:'black',borderColor:'black',backgroundColor:'rgba(0,0,0,0)'}}>Allow Panning</ToggleButton>
               </div>
               {graph(101,graphProp[1],graphProp[2],graphProp[3])}
             </div>:
@@ -423,39 +500,15 @@ export default function Home(props) {
                 </RadioGroup>
               </FormControl>
               <div style={{display:'flex',flexDirection:'row',alignContent:'center',justifyContent:'center',marginTop:'30px'}}>
-                <Button variant="contained" color="primary" onClick={() => {reset();setLoading(true);similar(stock1.code,value);setCompF(true);document.getElementById('result').scrollIntoView({behavior:'smooth', block: "start"})}} disabled={stock1===null?true:false}>Find</Button>
+                <Button variant="contained" color="primary" onClick={() => {console.log("logs"+scatter.current);reset(stock1.code,value);setLoading(true);setCompF(true);setDays(value===180?0:value===90?89:159)}} disabled={stock1===null?true:false}>Find</Button>
               </div>
             </div>
             {
               compF?
               <div id='result'>
               {
-                loading?
-                <div style={{display:'flex',flexDirection:'column',justifyContent:'center',alignContent:'center'}}>
-                  {/* <Loader
-                    type="Audio" 
-                    color="#00BFFF" 
-                    height={80} 
-                    width={80}
-                    style={{marginTop:'2rem'}} 
-                  /> */}
-                </div>
-                :
                 <div id='graphs' style={{display:'flex',flexDirection:'column',justifyContent:'center',alignContent:'center'}}>
-                  {
-                    corrD.slice(0,corrD.length-2).map((e,index) => (
-                      <div className={styles.card} id={index}>
-                        <div style={{position:'relative',height:'50px',marginBottom:'10px'}}>
-                          <ToggleButton id={'zoom'+index} style={{position:'absolute',left:'10px',width:'75px',height:'50px',color:'black',borderColor:'black'}} onClick={(e) => {scatter.current[index].current.chartInstance.resetZoom()}}>Zoom out</ToggleButton>
-                          <ToggleButton id={'pan'+index} onChange={() => {pan(index)}} style={{position:'absolute',right:'10px',width:'75px',height:'50px',color:'black',borderColor:'black',backgroundColor:'rgba(0,0,0,0)'}}>Allow Panning</ToggleButton>
-                        </div>
-                          {graph(e.code,e.data,e.name,index)}
-                        <div style={{position:'relative',height:'50px',marginTop:'10px'}}>
-                          <ToggleButton style={{position:'absolute',right:'10px',width:'75px',height:'50px',color:'black',borderColor:'black',backgroundColor:'rgba(0,0,0,0)'}} onClick={() => {bigGraph(e.code,e.data,e.name,index)}}>Full Screen</ToggleButton>
-                        </div>
-                      </div>
-                    ))
-                  }
+                  {graphs}
                 </div>
               }
               </div>:
