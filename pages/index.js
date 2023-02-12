@@ -494,7 +494,7 @@ export default function Home() {
     document.getElementById('pan').style.backgroundColor==='black'?document.getElementById('pan').style.color='white':document.getElementById('pan').style.color='black'
     console.log("Drag: "+zoomOptions.drag.enabled+", Pinch:"+zoomOptions.pinch.enabled)
     console.log("Pan: "+panOptions.enabled)
-    console.log(scatter.current[0])
+    console.log(panOptions)
   }
   
 
@@ -503,6 +503,9 @@ export default function Home() {
       console.log('It works' + ' fs')
       var chart = scatter.current[1].config._config.options.plugins.zoom
       var panOptions = chart.pan
+      var zoomOptions = chart.zoom
+      zoomOptions.drag.enabled = true
+      zoomOptions.pinch.enabled = true
       panOptions.enabled = false
       scatter.current[1].update();
     }
@@ -524,12 +527,13 @@ export default function Home() {
     else 
       return <Line options={options} data={data} width='90%' height='60%' ref={(el) => {scatter.current[0] = el}}/>
   }
-  const graph1Fn = useMemo(() => graph1(code), [close1,close2,code])
+  const graph1Fn = useMemo(() => graph1(code), [close1,close2])
 
-  const graph2Fn = useMemo(() => graph1(code), [close1,close2,code])
+  const graph2Fn = useMemo(() => graph1(code), [code])
 
   const handleClose = () => {
     setOpen(false);
+    console.log(scatter.current.pop())
   };
   
   const bigGraph = (stock1,stock2,days) => {
