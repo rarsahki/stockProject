@@ -184,6 +184,7 @@ export default function Home() {
         if (context.initial) {
           setPanInitFS()
           console.log('Initial animation finished');
+          setLoading(false)
         } else {
           console.log('animation finished');
         }
@@ -529,7 +530,6 @@ export default function Home() {
 
   const handleClose = () => {
     setOpen(false);
-    scatter.current.pop()
   };
   
   const bigGraph = (stock1,stock2,days) => {
@@ -653,7 +653,7 @@ export default function Home() {
                   graph1Fn
                 }
                 <div style={{position:'relative',height:'50px',marginTop:'10px'}}>
-                  <ToggleButton style={{position:'absolute',right:'10px',width:'75px',height:'50px',color:'black',borderColor:'black',backgroundColor:'rgba(0,0,0,0)'}} onClick={() => {setCode(101);bigGraph(stock1.code,stock2.code,value);console.log(scatter)}}>Full Screen</ToggleButton>
+                  <ToggleButton style={{position:'absolute',right:'10px',width:'75px',height:'50px',color:'black',borderColor:'black',backgroundColor:'rgba(0,0,0,0)'}} onClick={() => {setCode(101);bigGraph(stock1.code,stock2.code,value);console.log(scatter);setLoading(true)}}>Full Screen</ToggleButton>
                 </div>
               </div>
             }
