@@ -332,6 +332,18 @@ export default function Home(props) {
     <div>
       {loading?<LoadingComp/>:null}
       <NavBar id='back-to-top-anchor'/>
+      <Head>
+        <meta charset='utf-8' />
+        <meta http-equiv='X-UA-Compatible' content='IE=edge' />
+        <meta name='viewport' content='width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=yes' />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+        <meta name='description' content='Description' />
+        <meta name='keywords' content='Keywords' />
+        <link rel="manifest" href="/manifest.json" />
+        <link rel="icon" href="/icons/icon-192x192.png" />
+        <link rel="apple-touch-icon" href="/icons/icon-192x192.png"></link>
+        <meta name="theme-color" content="#317EFB"/>
+      </Head>
       <Dialog fullScreen open={open} onClose={handleClose} TransitionComponent={Transition}>
         <AppBar className={classes.appBar}>
           <Toolbar>

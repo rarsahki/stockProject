@@ -31,9 +31,7 @@ export default function Home() {
     width: undefined,
     height: undefined,
   });
-  // const zoomPlugin = dynamic(() => import('chartjs-plugin-zoom').then((mod) => mod.zoomPlugin), {
-  //   ssr: false,
-  // })
+  
   useEffect(() => {
     if (typeof window !== "undefined") {
       import('hammerjs');
