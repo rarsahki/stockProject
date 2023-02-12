@@ -284,7 +284,6 @@ export default function Home(props) {
 
   const graphs = useMemo(() => changeDetector(corrD), [corrD])
 
-  const [corr,setCorr] = useState()
   const [value, setValue] = useState('180');
   const handleChange = (event) => {
     setValue(event.target.value);
@@ -293,9 +292,6 @@ export default function Home(props) {
   const classes = useStyles();
   const [open, setOpen] = useState(false);
   const [graphProp,setGraphProp] = useState([])
-  const handleClickOpen = () => {
-    setOpen(true);
-  };
 
   const handleClose = () => {
     setOpen(false);

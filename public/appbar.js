@@ -54,8 +54,8 @@ function NavBar(props){
                         onClose={handleClose}
                         TransitionComponent={Fade}
                     >
-                        <MenuItem onClick={() => router.push('/App')}>Home</MenuItem>
                         <MenuItem onClick={() => router.push('/')}>Compare</MenuItem>
+                        <MenuItem onClick={() => router.push('/similar')}>Similar</MenuItem>
                         {/* <MenuItem onClick={() => router.push('/similar')}>Blog</MenuItem> */}
                     </Menu>
                 </Toolbar>

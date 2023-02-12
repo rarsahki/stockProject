@@ -1,9 +1,10 @@
-import { Button, FormControl, FormControlLabel, Radio, RadioGroup, TextField } from '@material-ui/core'
+import { AppBar, Button, Dialog, FormControl, FormControlLabel, IconButton, makeStyles, Radio, RadioGroup, Slide, TextField, Toolbar, Typography } from '@material-ui/core'
 import { Autocomplete, ToggleButton } from '@material-ui/lab'
 import Head from 'next/head'
 import styles from '../styles/Home.module.css'
 import tickers from '../public/BSE_metadata'
-import { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useRef, useState, useMemo } from 'react'
+import CloseIcon from '@material-ui/icons/Close'
 import axios from 'axios'
 import { Line } from 'react-chartjs-2'
 import NavBar from '../public/appbar'
@@ -12,9 +13,26 @@ import { Chart, TimeScale,LineController, LineElement, PointElement, LinearScale
 import 'chartjs-adapter-date-fns';
 import LoadingComp from '../public/loading'
 
+const useStyles = makeStyles((theme) => ({
+  appBar: {
+    position: 'relative',
+  },
+  title: {
+    marginLeft: theme.spacing(2),
+    flex: 1,
+  },
+}));
+
+const Transition = React.forwardRef(function Transition(props, ref) {
+  return <Slide direction="up" ref={ref} {...props} />;
+});
+
 export default function Home() {
-  const scatter = useRef()
+  const scatter = useRef([])
+  const [code,setCode] = useState(0)
   const [bg,setBg] = useState('linear-gradient:(white)')
+  const classes = useStyles();
+  const [open, setOpen] = useState(false);
   const [loading,setLoading] = useState(true)
   const [compF,setCompF] = useState(false)
   const [maxY1,setMaxY1] = useState()
@@ -61,6 +79,116 @@ export default function Home() {
   const [value, setValue] = useState('180');
   
   const options = {
+    animation: {
+      duration: 2000,
+      onComplete: function(context) {
+        if (context.initial) {
+          setPanInit()
+          console.log('Initial animation finished');
+        } else {
+          console.log('animation finished');
+        }
+      }
+    },
+    legend: {
+      labels: {
+          fontColor: 'black'
+      }
+    },
+    responsive: true,
+    plugins: {
+      tooltip: {
+        enabled: true,
+        callbacks: {
+          label: function(context) {
+            var label = context.dataset.label || '';
+            return label+"\n| Date: "+new Date(context.parsed.x).toLocaleDateString('en-US')+"\nPrice: "+context.parsed.y;
+          },
+          labelColor: function(tooltipItem, chart) {
+            return {
+                borderColor: 'black',
+                backgroundColor: tooltipItem.datasetIndex===0?close1[close1.length-1]['y']>close1[close1.length-2]['y']?'green':'red':close2[close2.length-1]['y']>close2[close2.length-2]['y']?'blue':'pink'
+            };
+          },
+          title: function(context) {
+            return "";
+          },
+        },
+      },
+      zoom: {
+        zoom: {
+          drag: {
+            enabled: true,
+            borderWidth: 1
+          },
+          pinch: {
+            enabled: true
+          },
+          mode: 'x',
+        },
+        pan: {
+          enabled: true,
+          mode: 'x',
+        },
+        limits: {
+          x: {min: close1[0]['x'],max: new Date()},
+        }
+      }
+    },
+    scales: {
+      y: {
+        type: 'linear',
+        linear:{
+          stepSize:'1'
+        },
+        ticks:{
+          fontColor: 'black'
+        },
+        position: 'left',
+      },
+      y2: {
+        type: 'linear',
+        position: 'right',
+        ticks:{
+          fontColor: 'black'
+        },
+        grid: {
+          drawOnChartArea: false // only want the grid lines for one axis to show up
+        }
+      },
+      x: {
+        display: true,
+        type: 'time',
+        time: { 
+          parser: 'DD/MM/YYYY',
+          unit: "day",
+          stepSize: "1",
+        },
+        ticks: {
+          max: new Date(),
+          fontColor: 'black'
+        },
+        scaleLabel: {
+          display: true,
+          labelString: 'Date',
+          fontColor: 'black'
+        },
+      }
+    }
+  }
+
+  const options1 = {
+    animation: {
+      duration: 2000,
+      onComplete: function(context) {
+        if (context.initial) {
+          setPanInitFS()
+          console.log('Initial animation finished');
+        } else {
+          console.log('animation finished');
+        }
+      }
+    },
     legend: {
       labels: {
           fontColor: 'black'
@@ -193,6 +321,53 @@ export default function Home() {
       data: close2
     }]
   }
+
+  const data1 = {
+    // labels: getDateArray(startDate,endDate).reverse().slice(0,parseInt(value)).map(e => e.toLocaleDateString()).reverse(),
+    datasets: [{
+      label: dupStock1,
+      fill: false,
+      lineTension: 0.1,
+      showLine: true,
+      borderColor: close1[close1.length-1]['y']>close1[close1.length-2]['y']?'green':'red',
+      borderCapStyle: 'butt',
+      borderDash: [],
+      borderDashOffset: 0.0,
+      borderJoinStyle: 'miter',
+      pointBorderColor: 'rgba(75,192,192,1)',
+      pointBackgroundColor: '#fff',
+      pointBorderWidth: 1,
+      pointHoverRadius: 5,
+      pointHoverBackgroundColor: 'rgba(75,192,192,1)',
+      pointHoverBorderColor: 'black',
+      pointHoverBorderWidth: 2,
+      pointRadius: 1,
+      pointHitRadius: 10,
+      yAxisID: 'y',
+      data: close1
+    }, {
+      label: dupStock2,
+      fill: false,
+      showLine: true,
+      lineTension: 0.1,
+      borderColor: close2[close2.length-1]['y']>close2[close2.length-2]['y']?'blue':'pink',
+      borderCapStyle: 'butt',
+      borderDash: [],
+      borderDashOffset: 0.0,
+      borderJoinStyle: 'miter',
+      pointBorderColor: 'black',
+      pointBackgroundColor: '#fff',
+      pointBorderWidth: 1,
+      pointHoverRadius: 5,
+      pointHoverBackgroundColor: 'rgba(75,192,192,1)',
+      pointHoverBorderColor: 'rgba(220,220,220,1)',
+      pointHoverBorderWidth: 2,
+      pointRadius: 1,
+      pointHitRadius: 10,
+      yAxisID: 'y2',
+      data: close2
+    }]
+  }
   const handleChange = (event) => {
     setValue(event.target.value);
   };
@@ -215,8 +390,7 @@ export default function Home() {
     x.forEach(reduce);
     return (minLength * sumXY - sumX * sumY) / Math.sqrt((minLength * sumX2 - sumX * sumX) * (minLength * sumY2 - sumY * sumY));
   };
-  const compare = (code1,code2,days) => {
-
+  const compare = (code1,code2,days,code) => {
     console.log(code1+" "+code2+" "+days)
     let ed1 = ""
     let ed2 = ""
@@ -224,7 +398,6 @@ export default function Home() {
     let sd2 = ""
     let y1 = []
     let y2 = []
-    document.getElementById('result').scrollIntoView({behavior:'smooth', block: "start"})
     axios.get("https://www.quandl.com/api/v3/datasets/BSE/"+code1+".json?api_key="+apiKey,{
       headers:{
         'Access-Control-Allow-Headers': '*',
@@ -273,26 +446,39 @@ export default function Home() {
             setDupStock1(stock1.name)
             setDupStock2(stock2.name)
           }
-        ).then(res => 
-          { 
-            setLoading(false)
-          }
         ).then(res => {
           setTimeout(() => {
             document.getElementById('resultText').scrollIntoView({behavior:'smooth'});
           },50)
         }).then(res =>  {
             console.log(close1[close1.length-1]['y'])
+            setLoading(false)
           }  
         )
       }
     )
   }
-  var dragOptions = {
-    animationDuration: 1000
+
+  const panFS = () => {
+    var chart = scatter.current[1].config._config.options.plugins.zoom
+    var zoomOptions = chart.zoom
+    var panOptions = chart.pan
+    if(document.getElementById('pan1').style.backgroundColor==='rgba(0, 0, 0, 0)' && panOptions.enabled===true){
+      panOptions.enabled = true
+    }else{
+      panOptions.enabled = !panOptions.enabled
+    }
+    zoomOptions.drag.enabled = !zoomOptions.drag.enabled
+    zoomOptions.pinch.enabled = !zoomOptions.pinch.enabled
+    scatter.current[1].update();
+    document.getElementById('pan1').style.backgroundColor==='black'?document.getElementById('pan1').style.backgroundColor='rgba(0,0,0,0)':document.getElementById('pan1').style.backgroundColor='black'
+    document.getElementById('pan1').style.backgroundColor==='black'?document.getElementById('pan1').style.color='white':document.getElementById('pan1').style.color='black'
+    console.log("Drag: "+zoomOptions.drag.enabled+", Pinch:"+zoomOptions.pinch.enabled)
+    console.log("Pan: "+panOptions.enabled)
+    console.log(scatter.current[1])
   }
   const pan = () => {
-    var chart = scatter.current.config._config.options.plugins.zoom
+    var chart = scatter.current[0].config._config.options.plugins.zoom
     var zoomOptions = chart.zoom
     var panOptions = chart.pan
     if(document.getElementById('pan').style.backgroundColor==='rgba(0, 0, 0, 0)' && panOptions.enabled===true){
@@ -302,23 +488,54 @@ export default function Home() {
     }
     zoomOptions.drag.enabled = !zoomOptions.drag.enabled
     zoomOptions.pinch.enabled = !zoomOptions.pinch.enabled
-    scatter.current.update('none');
+    scatter.current[0].update();
     document.getElementById('pan').style.backgroundColor==='black'?document.getElementById('pan').style.backgroundColor='rgba(0,0,0,0)':document.getElementById('pan').style.backgroundColor='black'
     document.getElementById('pan').style.backgroundColor==='black'?document.getElementById('pan').style.color='white':document.getElementById('pan').style.color='black'
     console.log("Drag: "+zoomOptions.drag.enabled+", Pinch:"+zoomOptions.pinch.enabled)
     console.log("Pan: "+panOptions.enabled)
-    console.log(scatter.current)
+    console.log(scatter.current[0])
+  }
+  
+
+  const setPanInitFS = () => {
+    if(document.getElementById('pan1').style.backgroundColor==='rgba(0, 0, 0, 0)'){
+      console.log('It works' + ' fs')
+      var chart = scatter.current[1].config._config.options.plugins.zoom
+      var panOptions = chart.pan
+      panOptions.enabled = false
+      scatter.current[1].update();
+    }
   }
   const setPanInit = () => {
     if(document.getElementById('pan').style.backgroundColor==='rgba(0, 0, 0, 0)'){
+      console.log(scatter.current[0])
       console.log('It works')
-      var chart = scatter.current.config._config.options.plugins.zoom
+      var chart = scatter.current[0].config._config.options.plugins.zoom
       var panOptions = chart.pan
       panOptions.enabled = false
-      scatter.current.update('none');
+      scatter.current[0].update();
     }
-    console.log('io')
   }
+
+  const graph1 = (code) => {
+    if(code === 101)
+      return <Line options={options1} data={data1} width='90%' height='60%' ref={(el) => {scatter.current[1] = el}}/>
+    else 
+      return <Line options={options} data={data} width='90%' height='60%' ref={(el) => {scatter.current[0] = el}}/>
+  }
+  const graph1Fn = useMemo(() => graph1(code), [close1,close2,code])
+
+  const graph2Fn = useMemo(() => graph1(code), [close1,close2,code])
+
+  const handleClose = () => {
+    setOpen(false);
+    scatter.current.pop()
+  };
+  
+  const bigGraph = (stock1,stock2,days) => {
+    setOpen(true)
+  }
+
   return (
     <div>
       {loading?<LoadingComp/>:null}
@@ -336,7 +553,31 @@ export default function Home() {
         <meta name="theme-color" content="#317EFB"/>
         <title>Compare Stocks</title>
       </Head>
-
+      <Dialog fullScreen open={open} onClose={handleClose} TransitionComponent={Transition}>
+        <AppBar className={classes.appBar}>
+          <Toolbar>
+            <IconButton edge="start" color="inherit" onClick={handleClose} aria-label="close">
+              <CloseIcon/>
+            </IconButton>
+            <Typography variant="h6" className={classes.title}>
+              Full Screen Graph (Use Landscape for better viewing)
+            </Typography>
+          </Toolbar>
+        </AppBar>
+        {
+          open?
+            <div className={styles.card} id='result2'>
+              <div style={{position:'relative',height:'50px',marginBottom:'10px'}}>
+                <ToggleButton value={0} style={{position:'absolute',left:'10px',width:'75px',height:'50px',color:'black',borderColor:'black'}} onClick={(e) => {scatter.current[1].resetZoom()}}>Zoom out</ToggleButton>
+                <ToggleButton value={0} id={'pan1'} onChange={() => {panFS()}} style={{position:'absolute',right:'10px',width:'75px',height:'50px',color:'black',borderColor:'black',backgroundColor:'rgba(0,0,0,0)'}}>Allow Panning</ToggleButton>
+              </div>
+              {
+                graph2Fn
+              }
+            </div>:
+            <div></div>
+        }
+      </Dialog>
       <main className={styles.main}>
         <h1 className={styles.title}>
           Compare <a>Two Stocks</a>
@@ -393,7 +634,7 @@ export default function Home() {
               </RadioGroup>
             </FormControl>
             <div style={{display:'flex',flexDirection:'row',alignContent:'center',justifyContent:'center',marginTop:'50px'}}>
-              <Button variant="contained" color="primary" onClick={() => {setBg("");document.getElementById('result').style.backgroundColor = 'white';setCompF(true);setLoading(true);compare(stock1.code,stock2.code,value)}} disabled={stock1===null||stock2===null?true:false}>Compare</Button>
+              <Button variant="contained" color="primary" onClick={() => {setBg("");document.getElementById('result').style.backgroundColor = 'white';setCompF(true);setLoading(true);setCode(1);compare(stock1.code,stock2.code,value)}} disabled={stock1===null||stock2===null?true:false}>Compare</Button>
             </div>
           </div>
           {
@@ -405,10 +646,15 @@ export default function Home() {
                 <h1 style={{textAlign:'center'}}>{Math.abs(corr)<=0.5?'😭':Math.abs(corr)<=0.8?'🧐':'🥳'}</h1>
                 <h4 style={{textAlign:'center'}}>{Math.abs(corr)<=0.5?'Sorry, not similar':Math.abs(corr)<=0.8?'Little similar':'Very similar to each other'}</h4>
                 <div style={{position:'relative',height:'50px'}}>
-                  <ToggleButton value={0} style={{position:'absolute',left:'10px',width:'75px',height:'50px',color:'black',borderColor:'black'}} onClick={(e) => {console.log(scatter.current);scatter.current.resetZoom()}}>Zoom out</ToggleButton>
+                  <ToggleButton value={0} style={{position:'absolute',left:'10px',width:'75px',height:'50px',color:'black',borderColor:'black'}} onClick={(e) => {console.log(scatter.current[0]);scatter.current[0].resetZoom()}}>Zoom out</ToggleButton>
                   <ToggleButton value={0} id="pan" onChange={() => {pan()}} style={{position:'absolute',right:'10px',width:'75px',height:'50px',color:'black',borderColor:'black',backgroundColor:'rgba(0,0,0,0)'}}>Allow Panning</ToggleButton>
                 </div>
-                <Line options={options} data={data} width='90%' height='60%' ref={scatter} onClick={setPanInit}/>
+                {
+                  graph1Fn
+                }
+                <div style={{position:'relative',height:'50px',marginTop:'10px'}}>
+                  <ToggleButton style={{position:'absolute',right:'10px',width:'75px',height:'50px',color:'black',borderColor:'black',backgroundColor:'rgba(0,0,0,0)'}} onClick={() => {setCode(101);bigGraph(stock1.code,stock2.code,value);console.log(scatter)}}>Full Screen</ToggleButton>
+                </div>
               </div>
             }
             </div>:
