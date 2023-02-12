@@ -481,7 +481,7 @@ export default function Home(props) {
                   onChange={(event, newValue) => {
                       setStock1(newValue);
                   }}
-                  getOptionLabel={(option) => option.code + " - " + option.name}
+                  getOptionLabel={(option) => option.name}
                   getOptionSelected={(option,value) => option === value}
                   style={{ width: 300 }}
                   renderInput={(params) => <TextField {...params} label="Stock 1" variant="outlined"/>}
