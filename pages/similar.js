@@ -56,7 +56,8 @@ export default function Home(props) {
     }
   },[])
   const similar = (code,days) => {
-    axios.post("http://localhost:8080/similar",{
+    axios.post("https://stock-server-374400.el.r.appspot.com/similar",{
+      crossDomain: true,
       code:code,
       days:days
     }).
